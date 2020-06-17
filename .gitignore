@@ -1,0 +1,12 @@
+﻿################################################################################
+# Este arquivo .gitignore foi criado automaticamente pelo Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/APITCCSmartBike
+/APITCCSmartBike/bin/Debug/netcoreapp3.0
+/APITCCSmartBike/obj
+/APITCCSmartBike/bin/Debug/netcoreapp3.1
+/APITCCSmartBike/bin/Release/netcoreapp3.1
+/APITCCSmartBike/Properties/PublishProfiles
+/APITCCSmartBike/Properties/appsettings.json
+/APITCCSmartBike/appsettings.json
