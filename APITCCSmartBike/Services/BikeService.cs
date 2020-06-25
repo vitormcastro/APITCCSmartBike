@@ -36,7 +36,7 @@ namespace APITCCSmartBike.Services
 
             _bikeDatabaseSettings = (BikeDatabaseSettings)settings;
         }
-       
+
         string GetCorridaId()
         {
             var client = new RestClient(_appSettings.Url + "/v2/entities/?type=Corrida&options=keyValues&limit=1000");
@@ -115,7 +115,7 @@ namespace APITCCSmartBike.Services
             request.AddHeader("Accept", "text/plain");
             request.AddParameter("text/plain", status.ToString(), ParameterType.RequestBody);
             IRestResponse response = client.Execute(request);
-            if (response == null)
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 message = "falha de Conexão";
                 return false;
@@ -164,7 +164,7 @@ namespace APITCCSmartBike.Services
 
         public IEnumerable<Data> ObterDados(string idBike, ref string message)
         {
-           
+
             try
             {
                 var data = ConnectToMongoDB(idBike);
@@ -172,7 +172,7 @@ namespace APITCCSmartBike.Services
                 {
                     message = "Sucess";
                     return data.Find(data => true).ToList();
-                   
+
                 }
             }
             catch (Exception ex)
@@ -180,13 +180,13 @@ namespace APITCCSmartBike.Services
                 message = ex.Message;
                 return null;
             }
-          
+
 
             message = "Não foi possível pegar as informação no banco";
             return null;
         }
 
-        public IEnumerable<Data> ObterDados(string idBike,string type, ref string message)
+        public IEnumerable<Data> ObterDados(string idBike, string type, ref string message)
         {
 
             try
@@ -210,6 +210,52 @@ namespace APITCCSmartBike.Services
             return null;
         }
 
+        public IEnumerable<Data> ObterDados(string idBike, DateTime de, DateTime ate, ref string message)
+        {
+            try
+            {
+                var data = ConnectToMongoDB(idBike);
+                if (data != null)
+                {
+                    message = "Sucess";
+                    return data.Find(data => data.RecvTime >= de && data.RecvTime <= ate).ToList();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return null;
+            }
+
+
+            message = "Não foi possível pegar as informação no banco";
+            return null;
+        }
+
+        public IEnumerable<Data> ObterDados(string idBike, DateTime de, DateTime ate, string type, ref string message)
+        {
+            try
+            {
+                var data = ConnectToMongoDB(idBike);
+                if (data != null)
+                {
+                    message = "Sucess";
+                    return data.Find(data => data.RecvTime >= de && data.RecvTime <= ate && data.AttrName == type).ToList();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return null;
+            }
+
+
+            message = "Não foi possível pegar as informação no banco";
+            return null;
+        }
+
         public IEnumerable<CoordinateModel> ObterParque(ref string message)
         {
             var client = new RestClient(_appSettings.Url + "/v2/entities/?options=keyValues&attrs=location,locked");
@@ -219,14 +265,9 @@ namespace APITCCSmartBike.Services
             request.AddHeader("fiware-servicepath", "/");
             request.AddHeader("Accept", "application/json");
             IRestResponse response = client.Execute(request);
-            if (response == null)
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 message = "Falha de Conexão";
-                return null;
-            }
-            if (response.StatusCode != System.Net.HttpStatusCode.OK)
-            {
-                message = "Não foi possível buscar os dados!";
                 return null;
             }
 
@@ -269,7 +310,7 @@ namespace APITCCSmartBike.Services
                 RefUser = idUser
             };
             var response = CreateOrUpdateRun(run);
-            if (response == null)
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 message = "Falha de Conexão na criação da entidade Corrida";
                 return false;
@@ -334,13 +375,8 @@ namespace APITCCSmartBike.Services
                         runs[i].Duracao = duracao.TotalMinutes;
                         runs[i].LeaveBike = finish.ToString();
                         var response = CreateOrUpdateRun(runs[i]);
-                        if (response == null)
-                        {
-                            message = "Falha de Conexão na autalização da entidade Corrida";
-                            return false;
-                        }
                         message = "Falha da Requisição";
-                        if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
+                        if (response == null || response.StatusCode != System.Net.HttpStatusCode.NoContent)
                         {
                             AlterarStatus(runs[i].RefBike, false, ref message);
                             return false;
@@ -389,5 +425,102 @@ namespace APITCCSmartBike.Services
             }
             return corridas;
         }
+
+        public IEnumerable<Bike> GetAll(ref string message)
+        {
+
+            var client = new RestClient(_appSettings.Url + "/v2/entities/?options=keyValues&limit=1000&type=iot");
+            client.Timeout = -1;
+            var request = new RestRequest(Method.GET);
+            request.AddHeader("fiware-service", "helixiot");
+            request.AddHeader("fiware-servicepath", "/");
+            request.AddHeader("Accept", "application/json");
+            IRestResponse response = client.Execute(request);
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                message = "falha de Conexão no Helix";
+                return null;
+            }
+
+            var sensores = JsonConvert.DeserializeObject<Sensor[]>(response.Content);
+
+            if (sensores.Length == 0)
+            {
+                message = "Falha ao obter dados dos sensores no Helix!";
+                return null;
+            }
+
+
+            client = new RestClient(_appSettings.Url + "/v2/entities/?type=Bicicleta&options=keyValues&limit=1000");
+            client.Timeout = -1;
+            request = new RestRequest(Method.GET);
+            request.AddParameter("text/plain", "", ParameterType.RequestBody);
+            response = client.Execute(request);
+            Console.WriteLine(response.Content);
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                message = "falha de Conexão no Helix";
+                return null;
+            }
+            var bikes = JsonConvert.DeserializeObject<Bike[]>(response.Content);
+
+            if (bikes.Length == 0)
+            {
+                message = "Falha ao encontrar bicicleta no sistema";
+                return bikes.ToList();
+            }
+
+            for (int i = 0; i < bikes.Length; i++)
+            {
+                for (int j = 0; j < sensores.Length; j++)
+                {
+                    if (sensores[j].Id == bikes[i].Id)
+                    {
+                        bikes[i].BatteryLevel = sensores[j].BatteryLevel;
+                        bikes[i].Coordinates = sensores[j].Location;
+                        bikes[i].Locked = sensores[j].Locked;
+                        bikes[i].Speed = sensores[j].Speed;
+                        break;
+                    }
+                    if (j == (sensores.Length - 1))
+                    {
+                        message = "Dados da Bicicleta " + bikes[i].Id + " não foram encontrados";
+                        return null;
+                    }
+                }
+            }
+
+            message = "Sucess";
+            return bikes.ToList();
+
+        }
+
+        public IEnumerable<Corrida> GetAllCorrida(ref string message)
+        {
+            var client = new RestClient(_appSettings.Url + "/v2/entities/?type=Corrida&options=keyValues&limit=1000");
+            client.Timeout = -1;
+            var request = new RestRequest(Method.GET);
+            request.AddParameter("text/plain", "", ParameterType.RequestBody);
+            IRestResponse response = client.Execute(request);
+            if (response == null || response.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                message = "Falha ao conectar ao Banco de dados!";
+                return null;
+            }
+
+            var runs = JsonConvert.DeserializeObject<Corrida[]>(response.Content);
+            if (runs.Length == 0)
+            {
+                message = "Não foi possível encontrar nenhuma corrida!";
+
+            }
+            else
+            {
+                message = "Sucess";
+            }
+            return runs.ToList();
+        }
+
+
     }
 }
