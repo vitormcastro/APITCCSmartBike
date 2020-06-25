@@ -18,6 +18,10 @@ namespace APITCCSmartBike.Interfaces
 
         IEnumerable<Data> ObterDados(string idBike, string type, ref string message);
 
+        IEnumerable<Data> ObterDados(string idBike, DateTime de, DateTime ate, ref string message);
+
+        IEnumerable<Data> ObterDados(string idBike, DateTime de, DateTime ate, string type, ref string message);
+
         Bike ObterBike(string idBike, ref string message);
 
         IEnumerable<CoordinateModel> ObterParque(ref string message);
@@ -29,5 +33,10 @@ namespace APITCCSmartBike.Interfaces
         bool TravarBikeInCorrida(string idUser, ref string message);
 
         IEnumerable<Corrida> GetCorridaHistorico(string idUser, int qtdd, ref string message);
+
+        IEnumerable<Bike> GetAll(ref string message);
+
+        IEnumerable<Corrida> GetAllCorrida(ref string message);
+
     }
 }
