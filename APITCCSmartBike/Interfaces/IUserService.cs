@@ -1,4 +1,6 @@
 ﻿using APITCCSmartBike.Entities;
+using APITCCSmartBike.Models;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,5 +14,7 @@ namespace APITCCSmartBike.Interfaces
         IEnumerable<User> GetAll();
 
         bool RecuperarSenha(string email, string username,ref string message);
+
+        bool CreateUser(UserModel user, ref string message);
     }
 }
