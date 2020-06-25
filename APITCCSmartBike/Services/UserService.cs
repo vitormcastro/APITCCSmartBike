@@ -1,6 +1,7 @@
 ﻿using APITCCSmartBike.Entities;
 using APITCCSmartBike.Helpers;
 using APITCCSmartBike.Interfaces;
+using APITCCSmartBike.Models;
 
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -45,7 +46,7 @@ namespace APITCCSmartBike.Services
             return response;
         }
 
-        public async Task Execute(string email, string subject, string message)
+        async Task Execute(string email, string subject, string message)
         {
             try
             {
@@ -78,6 +79,32 @@ namespace APITCCSmartBike.Services
             catch (Exception ex)
             {
                 throw ex;
+            }
+        }
+
+        string GetIDUser()
+        {
+            var client = new RestClient("http://13.84.179.36:1026/v2/entities/?type=User&options=keyValues&limit=1000&attrs=id");
+            client.Timeout = -1;
+            var request = new RestRequest(Method.GET);
+            request.AddParameter("text/plain", "", ParameterType.RequestBody);
+            IRestResponse response = client.Execute(request);
+            if (response == null || response.StatusCode != HttpStatusCode.OK)
+            {
+                return null;
+            }
+            var vetor = JsonConvert.DeserializeObject<User[]>(response.Content);
+            if (vetor.Length > 98)
+            {
+                return "urn:ngsi-ld:User:" + (vetor.Length + 1);
+            }
+            else if (vetor.Length > 8)
+            {
+                return "urn:ngsi-ld:User:0" + (vetor.Length + 1);
+            }
+            else
+            {
+                return "urn:ngsi-ld:User:00" + (vetor.Length + 1);
             }
         }
 
@@ -162,13 +189,13 @@ namespace APITCCSmartBike.Services
 
         public IEnumerable<User> GetAll()
         {
-            var client = new RestClient(_appSettings.Url + "/v2/entities/?options=keyValues&type=User");
+            var client = new RestClient(_appSettings.Url + "/v2/entities/?options=keyValues&type=User&limit=1000");
             client.Timeout = -1;
             var request = new RestRequest(Method.GET);
             request.AddParameter("text/plain", "", ParameterType.RequestBody);
             IRestResponse response = client.Execute(request);
             //Console.WriteLine(response.Content);
-            if (response == null)
+            if (response == null || response.StatusCode != HttpStatusCode.OK)
                 return null;
             User[] users = JsonConvert.DeserializeObject<User[]>(response.Content);
             /*var arrayResponse = JArray.Parse(response.Content);
@@ -216,6 +243,53 @@ namespace APITCCSmartBike.Services
                 message = ex.Message;
                 return false;
             }
+        }
+
+        public bool CreateUser(UserModel user, ref string message)
+        {
+
+            string id = GetIDUser();
+            if (string.IsNullOrEmpty(id))
+            {
+                message = "Falha ao conectar ao Banco de Dados";
+                return false;
+            }
+
+
+            var client = new RestClient(_appSettings.Url+"/v2/op/update");
+            client.Timeout = -1;
+            var request = new RestRequest(Method.POST);
+            request.AddHeader("Content-Type", "application/json");
+            request.AddParameter("application/json", "{\r\n  \"actionType\":\"APPEND\",\r\n  \"entities\":[\r\n    {\r\n      \"id\":\"" + id + "\", \"type\":\"User\"," +
+                "\r\n      \"FirstName\":{\r\n        \"type\":\"Text\", \"value\":\"" + user.FirstName + "\"\r\n      },\r\n      \"LastName\":{\r\n        " +
+                "\"type\":\"Text\", \"value\": \"" + user.LastName + "\"\r\n      },\r\n      \"Genero\":{\r\n        \"type\":\"Text\", \"value\": \"" + user.Genero + "\"\r\n" +
+                "      },\r\n      \"Nascimento\":{\r\n        \"type\":\"Text\", \"value\": \"" + user.Nascimento + "\"\r\n      },\r\n      \"Email\":{\r\n        " +
+                "\"type\":\"Text\", \"value\": \"" + user.Email + "\"\r\n      },\r\n      \"ImgBase64\":{\r\n        \"type\":\"Text\", \"value\": \"" + user.ImgBase64 + "\"" +
+                "\r\n      },\r\n      \"TotalRide\":{\r\n        \"type\":\"float\", \"value\": \"0\"\r\n      },\r\n      \"Username\":{\r\n        " +
+                "\"type\":\"Text\", \"value\": \"" + user.Username + "\"\r\n      },\r\n      \"Password\":{\r\n        \"type\":\"Text\", \"value\": \"" + user.Password +
+                "\"\r\n},\r\n       \"refPermission\": { \r\n        \"type\": \"Relationship\",\r\n        " +
+                                                      "\"value\": \"urn:ngsi-ld:Permission:003\"\r\n      }        \r\n    }\r\n  ]\r\n}", ParameterType.RequestBody);
+            IRestResponse response = client.Execute(request);
+            if (response == null || response.StatusCode != HttpStatusCode.NoContent)
+            {
+                message = "Falha ao Salvar o Usuário!";
+                return false;
+            }
+
+            client = new RestClient(_appSettings.Url+"/v2/op/update");
+            client.Timeout = -1;
+            request = new RestRequest(Method.POST);
+            request.AddHeader("Content-Type", "application/json");
+            request.AddParameter("application/json", "{\r\n  \"actionType\":\"APPEND\",\r\n  \"entities\":[\r\n     \r\n    {\r\n      \"id\":\""+id+"\", " +
+                                                      "\"type\":\"User\"\r\n    }\r\n  ]\r\n}", ParameterType.RequestBody);
+            response = client.Execute(request);
+            if (response == null || response.StatusCode != HttpStatusCode.NoContent)
+            {
+                message = "Falha ao Criar a Referencia do usuario!";
+                return false;
+            }
+            message = "Sucess";
+            return true;
         }
     }
 }
