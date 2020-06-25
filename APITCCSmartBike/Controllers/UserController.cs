@@ -36,5 +36,25 @@ namespace APITCCSmartBike.Models
             }
           
         }
+
+        [AllowAnonymous]
+        [HttpPost("create")]
+        public IActionResult CreateUser([FromBody]UserModel model)
+        {
+            string responde = string.Empty;
+            if(_userService.CreateUser(model,ref responde))
+            {
+                return Ok(new
+                {
+                    status = responde,
+                    message = "Criado com Sucesso!"
+                });
+            }
+            return BadRequest(new
+            {
+                status = "Failed",
+                message = responde
+            });
+        }
     }
 }
