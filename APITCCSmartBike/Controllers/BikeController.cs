@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using APITCCSmartBike.Entities;
 using APITCCSmartBike.Interfaces;
 using APITCCSmartBike.Models;
 using APITCCSmartBike.Services;
@@ -101,7 +102,7 @@ namespace APITCCSmartBike.Controllers
         }
 
         [HttpGet("obterdados/{id}/{type}")]
-        public IActionResult ObterDados(string id,string type)
+        public IActionResult ObterDados(string id, string type)
         {
             var response = string.Empty;
             var dados = _bikeService.ObterDados(id, type, ref response);
@@ -189,7 +190,7 @@ namespace APITCCSmartBike.Controllers
         public IActionResult CorridaHistorico(string id)
         {
             string response = string.Empty;
-           
+
             var corridas = _bikeService.GetCorridaHistorico(id, 5, ref response);
             if (corridas != null)
             {
@@ -212,8 +213,8 @@ namespace APITCCSmartBike.Controllers
         {
             string response = string.Empty;
             int count = qtdd == null ? 5 : qtdd.Value;
-            var corridas = _bikeService.GetCorridaHistorico(id, count,ref response);
-            if(response == "Sucess")
+            var corridas = _bikeService.GetCorridaHistorico(id, count, ref response);
+            if (response == "Sucess")
             {
                 return Ok(new
                 {
@@ -228,6 +229,104 @@ namespace APITCCSmartBike.Controllers
                 message = response
             });
         }
+
+        [HttpGet("all")]
+        public IActionResult GetAll()
+        {
+            string response = string.Empty;
+            var bikes = _bikeService.GetAll(ref response);
+            if (bikes == null)
+            {
+                return BadRequest(new
+                {
+                    status = "Failed",
+                    message = response
+                });
+            }
+            return Ok(new
+            {
+                status = response,
+                bikes
+            });
+        }
+
+        [HttpGet("corrida/all")]
+        public IActionResult GetAllCorrida()
+        {
+            string response = string.Empty;
+            var corridas = _bikeService.GetAllCorrida(ref response);
+            if (corridas == null)
+            {
+                return BadRequest(new
+                {
+                    status = "Failed",
+                    message = response
+                });
+            }
+            return Ok(new
+            {
+                status = response,
+                corridas
+            });
+        }
+
+        [HttpPost("obterdadosperiodo")]
+        public IActionResult ObterDadosEmPeriodo([FromBody] DadosPorPeriodoModel model)
+        {
+            try
+            {
+
+
+                DateTime de = Convert.ToDateTime(model.DeDataHora);
+                DateTime ate = DateTime.Now;
+                if (!string.IsNullOrWhiteSpace(model.AteDataHora))
+                {
+                    ate = Convert.ToDateTime(model.AteDataHora);
+                }
+                if (ate <= de)
+                {
+                    return BadRequest(new
+                    {
+                        status = "Failed",
+                        message = "Período invalido!"
+                    });
+                }
+                string response = string.Empty;
+                IEnumerable<Data> dados = null;
+                if (string.IsNullOrWhiteSpace(model.Type))
+                {
+                    dados = _bikeService.ObterDados(model.IdBike, de, ate, ref response);
+                }
+                else
+                {
+                    dados = _bikeService.ObterDados(model.IdBike, de, ate, model.Type, ref response);
+                }
+                if (dados == null)
+                {
+                    return BadRequest(new
+                    {
+                        status = "Failed",
+                        message = response
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = response,
+                    dados
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    status = "Failed",
+                    message = ex.Message
+                });
+            }
+
+        }
+
 
     }
 }
